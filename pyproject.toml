@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ventwig"
+version = "0.1.0"
+description = "Vendor git source directories into your project tree"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Brian Pond", email = "brian@datahenge.com"},
+]
+keywords = ["vendor", "vendoring", "git", "source", "dependencies"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "typer>=0.12",
+    "tomli-w>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.0",
+    "pytest>=8.0",
+    "ruff>=0.5",
+    "twine>=5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/brianpond/ventwig"
+Repository = "https://github.com/brianpond/ventwig"
+"Bug Tracker" = "https://github.com/brianpond/ventwig/issues"
+
+[project.scripts]
+ventwig = "ventwig.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ventwig"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "TCH"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["TC003"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ventwig"]
