@@ -46,7 +46,7 @@ ventwig/
 | Package | Purpose |
 |---|---|
 | `typer` | CLI framework (brings `click` and `rich`) |
-| `tomli-w` | `.ventwig.lock` writing — stdlib `tomllib` is intentionally read-only |
+| `tomlkit` | TOML read/write with comment and formatting preservation |
 
 ### Dev / Build
 
@@ -55,7 +55,7 @@ ventwig/
 | `ruff` | Lint and format |
 | `pytest` | Test runner |
 
-**Note on the TOML ecosystem:** The original `toml` PyPI package is unmaintained (last release 2020) and has known spec compliance gaps. The current standard for Python 3.11+ projects is `tomllib` (stdlib, read) + `tomli-w` (PyPI, write). `tomlkit` is an alternative that preserves comments and formatting — useful for round-tripping human-authored TOML, but unnecessary here since `.ventwig.lock` is a generated file.
+**Note on the TOML ecosystem:** The original `toml` PyPI package is unmaintained and has known spec compliance gaps. ventwig uses `tomllib` (stdlib) for read-only parsing of lock files and upstream packages — fast and dependency-free. `tomlkit` is used wherever ventwig writes back to the consuming project's `pyproject.toml`: it parses TOML into a style-preserving document model and serializes without disturbing comments, blank lines, or key ordering. `tomli-w` (write-only, no style preservation) was used initially but replaced with `tomlkit` to support the `--add-runtime-dependencies` feature cleanly.
 
 ---
 
@@ -63,10 +63,21 @@ ventwig/
 
 Defined in `pyproject.toml` of each **consuming project** — not ventwig itself.
 
+### Global options
+
+```toml
+[tool.ventwig]
+create_parent_package_markers = true   # bool, default true
+```
+
+`create_parent_package_markers` — after each sync, ventwig walks up from `local_path.parent` and creates an empty `__init__.py` in every intermediate directory that lacks one, stopping when it finds a directory that already has one (or reaches the project root). This makes vendored packages compatible with setuptools' normal package discovery in `src/` layouts. Set to `false` to disable.
+
+### Per-source entries
+
 ```toml
 [[tool.ventwig.sources]]
 name          = "datahenge_appkit"
-local_path    = "vendor/datahenge_appkit"
+local_path    = "src/mypackage/_vendor/datahenge_appkit"
 upstream      = "https://github.com/<owner>/datahenge-appkit.git"
 upstream_path = "src/datahenge_appkit"    # optional; omit to vendor the full repo root
 ref           = "main"                     # branch name or tag; commit SHAs not supported
@@ -133,13 +144,15 @@ rm "$tmp_index"
 
 ## Sync Algorithm
 
-See `ventwig-project-plan.md §5` for the authoritative step-by-step. Key implementation notes:
+Key implementation notes:
 
 1. **Locate `pyproject.toml`** by walking upward from `cwd` until found — same heuristic as pip and poetry. The consuming project's git root is verified before any destructive action.
 2. **Temp clone dir** via `tempfile.TemporaryDirectory()` — cleaned up automatically on normal exit and on error (context manager).
-3. **`upstream_path` handling**: after cloning, copy only `<tmpdir>/<upstream_path>/` into `local_path`. The rest of the clone is discarded.
-4. **Destructive replace**: `shutil.rmtree(local_path)` followed by `shutil.copytree(source, local_path)`, excluding `.git/` explicitly.
-5. **`git status --porcelain` check** (safety check §3 in the project plan): runs against the consuming project's repo, filtered to `local_path`, as a second independent drift signal.
+3. **Runtime dep check**: while the clone is still on disk, read the upstream repo's `[project.dependencies]` from its `pyproject.toml` (if present) and diff against the downstream project's deps. Missing deps are collected here and reported (or added) after the copy step.
+4. **`upstream_path` handling**: after cloning, copy only `<tmpdir>/<upstream_path>/` into `local_path`. The rest of the clone is discarded.
+5. **Destructive replace**: `shutil.rmtree(local_path)` followed by `shutil.copytree(source, local_path)`, excluding `.git/` explicitly.
+6. **Parent package marker creation**: if `create_parent_package_markers` is enabled, walk up from `local_path.parent` and touch `__init__.py` in any intermediate directory that lacks one, stopping at the first directory that already has one. This runs after the copy so it operates only on the local filesystem.
+7. **`git status --porcelain` check** (pre-sync safety check): runs against the consuming project's repo, filtered to `local_path`, as a second independent drift signal before any destructive action.
 
 ---
 
@@ -160,17 +173,18 @@ All errors produce a single, actionable human-readable message. `cli.py` catches
 
 ## CLI Surface
 
-Target for M1–M4:
-
 ```
 ventwig sync [SOURCE_NAME]
-  --force     Skip drift and porcelain checks; overwrite unconditionally
-  --dry-run   Show what would change; write nothing (no lock file update)
+  --force                       Skip drift and porcelain checks; overwrite unconditionally
+  --dry-run                     Show what would change; write nothing (no lock file update)
+  --add-runtime-dependencies    Add upstream runtime deps missing from downstream pyproject.toml
+
+ventwig status [SOURCE_NAME]
 ```
 
-`ventwig status` (show drift without syncing) is deferred to M4 per the project plan.
-
 `ventwig sync` with no `SOURCE_NAME` processes all sources in `[[tool.ventwig.sources]]` order. With a name, it processes only that source — useful for large projects with many vendored sources.
+
+`--add-runtime-dependencies` reads `[project.dependencies]` from the upstream repo's `pyproject.toml`, diffs it against the downstream project's declared dependencies (normalizing package names), and appends any missing entries. It uses `tomlkit` to edit the file in place, preserving comments and formatting. Without this flag, missing deps are still reported as warnings — the flag only controls whether ventwig mutates the file.
 
 ---
 

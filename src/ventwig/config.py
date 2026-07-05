@@ -11,6 +11,11 @@ _REQUIRED_SOURCE_KEYS = {"name", "local_path", "upstream", "ref"}
 
 
 @dataclass(frozen=True)
+class VentwigGlobalConfig:
+    create_parent_package_markers: bool = True
+
+
+@dataclass(frozen=True)
 class SourceConfig:
     name: str
     local_path: Path
@@ -27,7 +32,7 @@ def _find_pyproject(start: Path) -> Path:
     raise ConfigError("No pyproject.toml found in current directory or any parent.")
 
 
-def load_sources(start: Path | None = None) -> tuple[Path, list[SourceConfig]]:
+def load_sources(start: Path | None = None) -> tuple[Path, VentwigGlobalConfig, list[SourceConfig]]:
     """Locate pyproject.toml from start (default: cwd) and parse ventwig sources."""
     if start is None:
         start = Path.cwd()
@@ -37,9 +42,14 @@ def load_sources(start: Path | None = None) -> tuple[Path, list[SourceConfig]]:
     with pyproject_path.open("rb") as f:
         data = tomllib.load(f)
 
-    raw_sources = data.get("tool", {}).get("ventwig", {}).get("sources", [])
+    ventwig_section = data.get("tool", {}).get("ventwig", {})
+    raw_sources = ventwig_section.get("sources", [])
     if not raw_sources:
         raise ConfigError("No [[tool.ventwig.sources]] entries found in pyproject.toml.")
+
+    global_config = VentwigGlobalConfig(
+        create_parent_package_markers=ventwig_section.get("create_parent_package_markers", True),
+    )
 
     sources: list[SourceConfig] = []
     for i, raw in enumerate(raw_sources):
@@ -63,4 +73,4 @@ def load_sources(start: Path | None = None) -> tuple[Path, list[SourceConfig]]:
             )
         )
 
-    return pyproject_path, sources
+    return pyproject_path, global_config, sources

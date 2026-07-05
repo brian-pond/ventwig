@@ -15,10 +15,21 @@ def sync(
     ),
     force: bool = typer.Option(False, "--force", help="Skip drift and porcelain checks."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would change; write nothing."),
+    add_runtime_dependencies: bool = typer.Option(
+        False,
+        "--add-runtime-dependencies",
+        help="Add missing upstream runtime deps to downstream pyproject.toml. "
+             "Note: rewrites pyproject.toml via tomli_w, which does not preserve comments.",
+    ),
 ) -> None:
     """Sync vendored sources from upstream git repositories."""
     try:
-        run_sync(source_name=source_name, dry_run=dry_run, force=force)
+        run_sync(
+            source_name=source_name,
+            dry_run=dry_run,
+            force=force,
+            add_runtime_deps=add_runtime_dependencies,
+        )
     except VentwigError as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(1) from None

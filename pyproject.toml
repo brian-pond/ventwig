@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ventwig"
-version = "0.1.0"
+version = "0.2.0"
 description = "Vendor git source directories into your project tree"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -28,7 +28,7 @@ classifiers = [
 ]
 dependencies = [
     "typer>=0.12",
-    "tomli-w>=1.0",
+    "tomlkit>=0.11",
 ]
 
 [project.optional-dependencies]

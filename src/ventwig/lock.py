@@ -4,7 +4,7 @@ import datetime
 import tomllib
 from typing import TYPE_CHECKING
 
-import tomli_w
+import tomlkit
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -33,8 +33,8 @@ def write_lock(pyproject_path: Path, data: dict[str, dict]) -> None:
     lock_file = _lock_path(pyproject_path)
     tmp_file = lock_file.parent / (lock_file.name + ".tmp")
     try:
-        with tmp_file.open("wb") as f:
-            tomli_w.dump(data, f)
+        with tmp_file.open("w", encoding="utf-8") as f:
+            tomlkit.dump(data, f)
         tmp_file.replace(lock_file)
     except Exception as exc:
         tmp_file.unlink(missing_ok=True)

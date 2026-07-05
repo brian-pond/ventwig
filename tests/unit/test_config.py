@@ -20,7 +20,7 @@ local_path = "vendor/mylib"
 upstream = "https://example.com/mylib.git"
 ref = "main"
 """)
-    _, sources = load_sources(tmp_path)
+    _, _gc, sources = load_sources(tmp_path)
     assert len(sources) == 1
     s = sources[0]
     assert s.name == "mylib"
@@ -39,7 +39,7 @@ upstream = "https://example.com/mylib.git"
 upstream_path = "src/mylib"
 ref = "main"
 """)
-    _, sources = load_sources(tmp_path)
+    _, _gc, sources = load_sources(tmp_path)
     assert sources[0].upstream_path == "src/mylib"
 
 
@@ -57,7 +57,7 @@ local_path = "vendor/lib_b"
 upstream = "https://example.com/b.git"
 ref = "v1.0"
 """)
-    _, sources = load_sources(tmp_path)
+    _, _gc, sources = load_sources(tmp_path)
     assert len(sources) == 2
     assert sources[0].name == "lib_a"
     assert sources[1].name == "lib_b"
@@ -74,7 +74,7 @@ ref = "main"
 """)
     subdir = tmp_path / "a" / "b" / "c"
     subdir.mkdir(parents=True)
-    _, sources = load_sources(subdir)
+    _, _gc, sources = load_sources(subdir)
     assert len(sources) == 1
 
 
@@ -86,7 +86,7 @@ local_path = "vendor/mylib"
 upstream = "https://example.com/mylib.git"
 ref = "main"
 """)
-    pyproject_path, _ = load_sources(tmp_path)
+    pyproject_path, _gc, _ = load_sources(tmp_path)
     assert pyproject_path == tmp_path / "pyproject.toml"
 
 
