@@ -29,3 +29,6 @@ Thumbs.db
 
 # PyPI Building
 buildme.sh
+
+# Claude Code local settings (per-user)
+.claude/settings.local.json
